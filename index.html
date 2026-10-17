@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statistics quiz</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1d2a2f;--mute:#5d6b70;--line:#d5dbd8;--accent:#1f5f5b;--ok:#1b7a43;--okbg:#e3f3ea;--bad:#a8321f;--badbg:#f9e4df}
+@media (prefers-color-scheme:dark){:root{--bg:#141a1c;--card:#1d2629;--ink:#e8eeee;--mute:#9bacb0;--line:#35444a;--accent:#6fc2b9;--ok:#6fd49b;--okbg:#17372a;--bad:#ff9d8a;--badbg:#3d2020}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 Georgia,"Times New Roman",serif}
+main{max-width:720px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:1.15rem;font-weight:normal;color:var(--mute);margin:0 0 18px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.meta{font:14px system-ui,sans-serif;color:var(--mute);margin-bottom:22px;display:flex;justify-content:space-between}
+.q{font-size:1.25rem;line-height:1.5;margin:0 0 20px}
+.opts{display:grid;gap:10px}
+.opt{font:inherit;text-align:left;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;gap:12px}
+.opt b{font:600 15px system-ui,sans-serif;color:var(--mute);min-width:1.2em}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.opt.ok{border-color:var(--ok);background:var(--okbg)}
+.opt.bad{border-color:var(--bad);background:var(--badbg)}
+.opt:disabled{cursor:default}
+.fb{font:15px system-ui,sans-serif;margin:16px 0 0;min-height:1.5em}
+.btn{font:600 15px system-ui,sans-serif;background:var(--accent);color:var(--bg);border:0;border-radius:8px;padding:11px 20px;cursor:pointer;margin-top:12px}
+.btn.alt{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.score{font-size:2.4rem;margin:0 0 4px}
+ol.rev{padding-left:1.3em}
+ol.rev li{margin-bottom:14px}
+.rev .you{color:var(--bad)}.rev .right{color:var(--ok)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+.note{font:14px system-ui,sans-serif;background:var(--badbg);color:var(--ink);border-radius:8px;padding:10px 12px;margin:0 0 14px}
+pre.tbl{font:15px/1.5 ui-monospace,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;overflow-x:auto}
+.fig{max-width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:8px;margin:0 0 20px;display:block}
+.q{white-space:pre-line}
+.rows{display:grid;gap:12px;margin-bottom:6px}
+.row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:10px 14px}
+.row>span{flex:1 1 320px}
+select,input[type=text]{font:15px system-ui,sans-serif;padding:8px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);max-width:100%}
+input[type=text]{width:6em}
+select.ok,input.ok{border-color:var(--ok);background:var(--okbg)}select.bad,input.bad{border-color:var(--bad);background:var(--badbg)}
+.fix{font:14px system-ui,sans-serif;color:var(--bad);flex-basis:100%}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script src="questions.js"></script>
+<script>
+const app=document.getElementById('app');
+let i=0,score=0,picks=[],QUESTIONS=[],TITLE='',cur=0,NOTE='';
+const L='ABCDE';
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function menu(){
+  app.innerHTML='<h1>Choose a quiz</h1><div class="opts">'+QUIZZES.map((z,k)=>`<button class="opt" data-k="${k}"><span>${esc(z.title)} (${z.questions.length} questions)</span></button>`).join('')+'</div><p class="meta">'+QUIZZES.reduce((s,z)=>s+z.questions.length,0)+' questions in total</p>';
+  app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>start(+b.dataset.k));
+}
+function start(k){cur=k;QUESTIONS=QUIZZES[k].questions.slice();TITLE=QUIZZES[k].title;NOTE=QUIZZES[k].note||'';i=0;score=0;picks=[];show()}
+function head(){return `<h1>${esc(TITLE)}</h1>${NOTE?`<p class="note">${esc(NOTE)}</p>`:''}<div class="bar"><i style="width:${i/QUESTIONS.length*100}%"></i></div><div class="meta"><span>Question ${i+1} of ${QUESTIONS.length}</span><span>Score: ${score}</span></div>`}
+function stem(q){return `<p class="q">${esc(q.q)}</p>${q.pre?`<pre class="tbl">${esc(q.pre)}</pre>`:''}${q.img?`<img class="fig" src="img/${q.img}.png" alt="Figure for this question">`:''}`}
+function show(){
+  const q=QUESTIONS[i];
+  if(q.rows){
+    app.innerHTML=head()+stem(q)+'<div class="rows">'+q.rows.map((r,k)=>`<label class="row"><span>${esc(r.l)}</span>${r.n?`<input type="text" inputmode="decimal" data-k="${k}">`:`<select data-k="${k}"><option value="">Choose...</option>${r.o.map(o=>`<option>${esc(o)}</option>`).join('')}</select>`}</label>`).join('')+'</div><button class="btn" id="chk">Check answers</button><p class="fb" aria-live="polite"></p><div id="nx"></div>';
+    document.getElementById('chk').onclick=checkRows;
+  }else{
+    app.innerHTML=head()+stem(q)+`<div class="opts">${q.o.map((t,k)=>`<button class="opt" data-k="${k}"><b>${L[k]}.</b><span>${esc(t)}</span></button>`).join('')}</div><p class="fb" aria-live="polite"></p><div id="nx"></div>`;
+    app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>pick(+b.dataset.k));
+  }
+}
+function next(ok){
+  if(ok)score++;
+  const last=i===QUESTIONS.length-1;
+  document.getElementById('nx').innerHTML=`<button class="btn" id="go">${last?'See results':'Next question'}</button>`;
+  const go=document.getElementById('go');go.focus();
+  go.onclick=()=>{if(last)finish();else{i++;show()}};
+}
+function pick(k){
+  const q=QUESTIONS[i],right=k===q.a;picks[i]=k;
+  app.querySelectorAll('.opt').forEach((b,n)=>{b.disabled=true;if(n===q.a)b.classList.add('ok');else if(n===k)b.classList.add('bad')});
+  app.querySelector('.fb').textContent=right?'Correct.':'Not quite. The correct answer is: '+q.o[q.a];
+  next(right);
+}
+function checkRows(){
+  const q=QUESTIONS[i];let all=true,mine=[];
+  app.querySelectorAll('[data-k]').forEach(el=>{
+    const r=q.rows[+el.dataset.k],v=el.value.trim(),good=String(r.a).toLowerCase()===v.toLowerCase();
+    mine.push(v);el.disabled=true;el.classList.add(good?'ok':'bad');
+    if(!good){all=false;el.closest('.row').insertAdjacentHTML('beforeend',`<em class="fix">Correct: ${esc(r.a)}</em>`)}
+  });
+  picks[i]=mine;document.getElementById('chk').remove();
+  app.querySelector('.fb').textContent=all?'Correct.':'Not quite. The correct answers are shown in red.';
+  next(all);
+}
+function finish(){
+  const n=QUESTIONS.length,wrong=QUESTIONS.map((q,k)=>k).filter(k=>{const q=QUESTIONS[k];return q.rows?!q.rows.every((r,j)=>String(r.a).toLowerCase()===String(picks[k][j]).toLowerCase()):picks[k]!==q.a});
+  const orig=QUIZZES[cur].questions;
+  app.innerHTML=`<h1>${esc(TITLE)}</h1><p class="score">${score} / ${n}</p><p class="meta">${Math.round(score/n*100)}% correct</p>
+  <button class="btn" id="again">Try again</button> <button class="btn alt" id="home">All quizzes</button>
+  ${wrong.length?` <button class="btn alt" id="redo">Retry missed questions</button><h2>Missed questions</h2><ol class="rev">${wrong.map(k=>{const q=QUESTIONS[k];return `<li value="${orig.indexOf(q)+1}">${esc(q.q)}<br><span class="right">Correct answer: ${esc(q.rows?q.rows.map(r=>r.a).join(', '):q.o[q.a])}</span></li>`}).join('')}</ol>`:'<p>You got every question right.</p>'}`;
+  document.getElementById('again').onclick=()=>start(cur);
+  document.getElementById('home').onclick=menu;
+  const r=document.getElementById('redo');
+  if(r)r.onclick=()=>{QUESTIONS=wrong.map(k=>QUESTIONS[k]);i=0;score=0;picks=[];show()};
+}
+menu();
+</script>
+</body>
+</html>
